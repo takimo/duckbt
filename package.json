@@ -1,0 +1,24 @@
+{
+  "name": "duckbt",
+  "version": "1.0.0",
+  "description": "",
+  "main": "coi-serviceworker.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/takimo/duckbt.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/takimo/duckbt/issues"
+  },
+  "homepage": "https://github.com/takimo/duckbt#readme",
+  "devDependencies": {
+    "vitest": "^4.0.15"
+  }
+}

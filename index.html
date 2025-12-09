@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>DuckBT IDE</title>
+    
+    <script src="coi-serviceworker.js"></script>
+
+    <script src="https://mozilla.github.io/nunjucks/files/nunjucks.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/js-yaml/4.1.0/js-yaml.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-sql.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-yaml.min.js"></script>
+    
+    <style>
+        :root {
+            /* Theme Colors: Night Pond */
+            --bg-main: #0d1117;       
+            --bg-panel: #161b22;      
+            --bg-header: #21262d;     
+            --text-main: #c9d1d9;     
+            --text-muted: #8b949e;    
+            --accent: #e3b341;        
+            --accent-hover: #f2cc60;  
+            --accent-text: #0d1117;   
+            --border: #30363d;        
+            --selection: rgba(227, 179, 65, 0.15); 
+            --error: #f85149;         
+        }
+
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: var(--bg-main); color: var(--text-main); height: 100vh; overflow: hidden; display: flex; }
+        
+        /* --- SPLASH SCREEN --- */
+        #splash-screen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-main);
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease-out, visibility 0.5s;
+            padding: 20px;
+            text-align: center;
+        }
+        #splash-screen.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .splash-logo-container { margin-bottom: 30px; animation: float 3s ease-in-out infinite; }
+        @keyframes float { 0% { transform: translateY(0px); } 50% { transform: translateY(-10px); } 100% { transform: translateY(0px); } }
+
+        /* Loading Bar */
+        .loading-bar-container {
+            width: 240px;
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 25px;
+        }
+        .loading-bar {
+            height: 100%;
+            width: 50%;
+            background: var(--accent);
+            border-radius: 2px;
+            animation: loading 1.5s infinite ease-in-out;
+        }
+        @keyframes loading { 0% { transform: translateX(-100%); } 100% { transform: translateX(200%); } }
+
+        /* Quotes */
+        .quote-container { max-width: 600px; color: var(--text-muted); font-style: italic; min-height: 80px; display: flex; flex-direction: column; justify-content: center; }
+        .quote-text { font-size: 16px; margin-bottom: 10px; line-height: 1.5; transition: opacity 0.3s; }
+        .quote-author { font-size: 13px; color: var(--accent); opacity: 0.8; text-align: right; display: block; }
+
+        /* Language Switcher (Splash) */
+        .lang-switch {
+            position: absolute; top: 20px; right: 20px; font-size: 12px;
+            color: var(--text-muted); cursor: pointer; border: 1px solid var(--border);
+            padding: 5px 10px; border-radius: 20px; transition: all 0.2s;
+        }
+        .lang-switch:hover { color: var(--accent); border-color: var(--accent); background: rgba(227, 179, 65, 0.1); }
+
+        /* Layout */
+        #sidebar { width: 280px; background: var(--bg-panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; z-index: 20; }
+        #main { flex: 1; display: flex; flex-direction: column; height: 100vh; position: relative; z-index: 10; }
+        #editor-area { flex: 1; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); overflow: hidden; background: var(--bg-main); position: relative; }
+        #bottom-panel { height: 35%; display: flex; flex-direction: column; background: #010409; border-top: 1px solid var(--border); position: relative; }
+
+        /* --- DUCK ANIMATION --- */
+        .duck-layer { position: absolute; top: -34px; left: 0; width: 100%; height: 35px; pointer-events: none; z-index: 100; overflow: hidden; }
+        .the-duck {
+            position: absolute; bottom: -4px; left: -200px;
+            display: flex; align-items: flex-end; gap: 2px;
+            animation: wander 60s linear infinite, behavior 60s step-end infinite;
+            animation-delay: 30s;
+        }
+        .mama-duck { font-size: 24px; clip-path: inset(0 0 12px 0); animation: bob 2s ease-in-out infinite alternate; z-index: 2; }
+        .duckling { font-size: 16px; clip-path: inset(0 0 8px 0); animation: bob 1.5s ease-in-out infinite alternate; opacity: 0.9; }
+        @keyframes wander { 0% { left: -200px; } 35% { left: 40%; } 55% { left: 40%; } 100% { left: 100%; } }
+        @keyframes behavior { 
+            0% { transform: scaleX(-1); } 38% { transform: scaleX(-1); } 
+            40% { transform: scaleX(1); } 50% { transform: scaleX(1); } 
+            52% { transform: scaleX(-1); } 100% { transform: scaleX(-1); } 
+        }
+        @keyframes bob { from { transform: translateY(0px); } to { transform: translateY(4px); } }
+
+        /* Common UI */
+        .header { padding: 8px 12px; font-weight: 600; background: var(--bg-header); border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .header-title { color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-size: 11px; }
+        .icon-group { display: flex; gap: 6px; }
+        .btn-icon { background: transparent; border: 1px solid transparent; color: var(--text-muted); width: 24px; height: 24px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s; }
+        .btn-icon:hover { background: rgba(255,255,255,0.1); color: var(--text-main); }
+
+        .list-container { overflow-y: auto; flex: 1; padding: 0; margin: 0; list-style: none; }
+        .file-item, .db-item { padding: 6px 15px; cursor: pointer; border-left: 3px solid transparent; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--text-muted); transition: background 0.1s; }
+        .file-item:hover, .db-item:hover { background: rgba(255,255,255,0.04); color: var(--text-main); }
+        .file-item.active { background: var(--selection); border-left-color: var(--accent); color: var(--text-main); }
+        
+        .sidebar-section-db { height: 30%; background: #0d1117; display: flex; flex-direction: column; border-bottom: 1px solid var(--border); }
+        .sidebar-section-config { flex: 0 0 auto; border-bottom: 1px solid var(--border); }
+        .sidebar-section-models { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+        .sidebar-section-footer { flex: 0 0 auto; padding: 10px; border-top: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; }
+
+        .delete-btn { opacity: 0; font-size: 12px; color: var(--error); padding: 2px 6px; cursor: pointer; transition: opacity 0.2s; }
+        .file-item:hover .delete-btn { opacity: 1; }
+
+        /* Code Editor */
+        #code-editor-container { flex: 1; position: relative; background: var(--bg-main); overflow: auto; }
+        #code-editor { font-family: 'Consolas', monospace; font-size: 14px; line-height: 1.6; min-height: 100%; padding: 20px; color: var(--text-main); outline: none; white-space: pre; tab-size: 4; }
+        .token.variable { color: var(--accent); } 
+
+        /* Results */
+        #result-table-container { flex: 1; overflow: auto; padding: 0; font-family: 'Segoe UI', sans-serif; font-size: 12px; background: #0d1117; }
+        .data-table { width: max-content; min-width: 100%; border-collapse: separate; border-spacing: 0; color: var(--text-main); }
+        .data-table th, .data-table td { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 12px; text-align: left; white-space: nowrap; }
+        .data-table th { background-color: var(--bg-header); color: var(--text-main); position: sticky; top: 0; z-index: 10; font-weight: 600; border-bottom: 2px solid var(--border); }
+        .data-table tr:nth-child(even) td { background-color: rgba(255, 255, 255, 0.02); }
+        .data-table tr:hover td { background-color: rgba(227, 179, 65, 0.1); }
+
+        /* Buttons */
+        .btn { background: var(--accent); color: var(--accent-text); border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer; font-weight: 700; font-size: 12px; transition: background 0.2s; }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+        .btn-cancel { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
+        .btn-danger { background: transparent; border: 1px solid var(--error); color: var(--error); padding: 6px 10px; font-size: 11px; width: 100%; cursor: pointer; border-radius: 4px; text-align: center; }
+        .btn-danger:hover { background: var(--error); color: #fff; }
+        .btn-sub { background: transparent; border: 1px solid var(--border); color: var(--text-muted); padding: 6px 10px; font-size: 11px; width: 100%; cursor: pointer; border-radius: 4px; text-align: center; transition: all 0.2s; }
+        .btn-sub:hover { border-color: var(--accent); color: var(--text-main); }
+
+        .tabs { display: flex; background: var(--bg-header); border-bottom: 1px solid var(--border); position: relative; } 
+        .tab { padding: 8px 20px; cursor: pointer; font-size: 12px; color: var(--text-muted); border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .tab:hover { color: var(--text-main); }
+        .tab.active { color: var(--text-main); border-bottom-color: var(--accent); background: rgba(255,255,255,0.02); }
+        
+        #console-output { flex: 1; overflow: auto; padding: 10px; font-family: 'Consolas', monospace; font-size: 12px; background: #010409; }
+        #console-output p { margin: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 3px; }
+        .log-info { color: #58a6ff; } .log-success { color: #3fb950; } .log-error { color: #f85149; } .log-cmd { color: var(--accent); }
+
+        /* Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 1000; justify-content: center; align-items: center; backdrop-filter: blur(2px); }
+        .modal { background: var(--bg-panel); padding: 24px; border-radius: 8px; width: 450px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); border: 1px solid var(--border); }
+        .modal h3 { margin-top: 0; color: var(--text-main); font-size: 16px; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 6px; font-size: 12px; color: var(--text-muted); font-weight: 600; }
+        .form-group input[type="text"] { width: 100%; padding: 10px; background: var(--bg-main); border: 1px solid var(--border); color: var(--text-main); border-radius: 4px; box-sizing: border-box; font-size: 13px; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
+        .checkbox-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer; }
+    </style>
+</head>
+<body>
+    
+    <div id="splash-screen">
+        <div class="lang-switch" id="lang-toggle">
+            <span id="lang-label">English</span> / 日本語
+        </div>
+
+        <div class="splash-logo-container">
+            <svg width="280" height="80" viewBox="0 0 280 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <g opacity="0.8">
+                    <ellipse cx="110" cy="65" rx="40" ry="10" fill="#161b22" stroke="#e3b341" stroke-width="2"/>
+                    <path d="M70,65 L70,45 C70,39 150,39 150,45 L150,65" fill="#161b22" stroke="#e3b341" stroke-width="2"/>
+                    <ellipse cx="110" cy="45" rx="40" ry="10" fill="#e3b341"/>
+                </g>
+                <g transform="translate(85, 10)">
+                    <path d="M10,30 C-5,30 -5,10 15,5 C25,0 40,5 45,15 C50,25 45,35 35,38 L15,38 C12,38 10,35 10,30 Z" fill="#e3b341"/>
+                    <circle cx="40" cy="15" r="12" fill="#e3b341"/>
+                    <circle cx="44" cy="12" r="2" fill="#0d1117"/>
+                    <path d="M50,15 L60,12 L60,18 Z" fill="#f2cc60"/>
+                    <path d="M15,25 C20,20 30,25 25,35" stroke="#c99a2e" stroke-width="2" fill="none" stroke-linecap="round"/>
+                </g>
+                <text x="165" y="55" fill="#e3b341" font-family="'Segoe UI', sans-serif" font-weight="bold" font-size="22">DuckBT</text>
+                <text x="248" y="55" fill="#8b949e" font-family="'Segoe UI', sans-serif" font-weight="normal" font-size="14">IDE</text>
+            </svg>
+        </div>
+
+        <div class="loading-bar-container">
+            <div class="loading-bar"></div>
+        </div>
+
+        <div class="quote-container">
+            <div class="quote-text" id="splash-quote"></div>
+            <span class="quote-author" id="splash-author"></span>
+        </div>
+    </div>
+    <div id="sidebar">
+        <div class="sidebar-section-db">
+            <div class="header">
+                <span class="header-title">1. Database (Source)</span>
+                <div class="icon-group">
+                    <button id="btn-load-data" class="btn-icon" title="Load Data">☁️</button>
+                    <button id="btn-refresh-db" class="btn-icon" title="Refresh">↻</button>
+                </div>
+            </div>
+            <ul id="db-list" class="list-container">
+                <li style="padding:10px; opacity:0.5; font-size:11px; padding-left:15px;">Loading...</li>
+            </ul>
+        </div>
+        <div class="sidebar-section-config">
+            <div class="header">
+                <span class="header-title">2. Configuration</span>
+            </div>
+            <ul class="list-container" style="padding-bottom: 5px;">
+                <li id="file-item-sources" class="file-item">
+                    <span><span class="file-icon yaml-icon">⚙️</span>sources.yml</span>
+                </li>
+            </ul>
+        </div>
+        <div class="sidebar-section-models">
+            <div class="header">
+                <span class="header-title">3. Models (SQL)</span>
+                <div class="icon-group">
+                    <button id="btn-add-file" class="btn-icon" title="New Model">+</button>
+                </div>
+            </div>
+            <ul id="file-list" class="list-container"></ul>
+        </div>
+        
+        <div class="sidebar-section-footer">
+            <button id="btn-lang-toggle" class="btn-sub">🌐 Language: Auto</button>
+            <button class="btn-danger" onclick="resetProject()">⚠️ Reset All Data</button>
+        </div>
+    </div>
+
+    <div id="main">
+        <div id="editor-area">
+            <div class="header">
+                <span id="current-filename" style="font-family: monospace; font-size: 13px;">Select a file...</span>
+                <button id="btn-save" class="btn" style="padding: 4px 10px; font-size: 11px;">SAVE</button>
+            </div>
+            <div id="code-editor-container">
+                <div id="code-editor" class="language-sql"></div>
+            </div>
+        </div>
+
+        <div id="bottom-panel">
+            <div class="tabs">
+                <div class="tab active" onclick="switchTab('console')">CONSOLE</div>
+                <div class="tab" onclick="switchTab('results')">QUERY RESULTS</div>
+                <div style="flex:1; text-align: right; padding: 4px;">
+                    <button id="btn-run" class="btn">▶ RUN DBT</button>
+                </div>
+                
+                <div class="duck-layer">
+                    <div class="the-duck" id="duck-container">
+                        <div class="mama-duck">🦆</div>
+                    </div>
+                </div>
+            </div>
+            <div id="console-output"><p class="log-info">DuckBT System initializing...</p></div>
+            <div id="result-table-container" style="display: none;"></div>
+        </div>
+    </div>
+
+    <div id="modal-load-data" class="modal-overlay">
+        <div class="modal">
+            <h3>Load CSV Data</h3>
+            <div class="form-group">
+                <label>CSV URL</label>
+                <input type="text" id="input-csv-url" value="https://raw.githubusercontent.com/databricks/Spark-The-Definitive-Guide/master/data/retail-data/all/online-retail-dataset.csv">
+            </div>
+            <div class="form-group">
+                <label>Table Name (Destination)</label>
+                <input type="text" id="input-table-name" value="raw_invoices">
+            </div>
+            <div class="form-group">
+                <label class="checkbox-group">
+                    <input type="checkbox" id="input-use-proxy" checked>
+                    <span><b>Use CORS Proxy</b> (Required for external URLs)</span>
+                </label>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+                <button class="btn" onclick="executeLoadData()">Load Data</button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="src/main.js"></script>
+</body>
+</html>
