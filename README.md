@@ -6,7 +6,11 @@
 
 **DuckBT** is a lightweight, serverless SQL development environment designed for analytics engineers. It brings the power of **dbt (data build tool)** modeling syntax directly to your browser using **DuckDB-WASM**.
 
+**DuckBT**は、アナリティクスエンジニア向けの軽量でサーバーレスなSQL開発環境です。**dbt (data build tool)** のモデリング構文を、**DuckDB-WASM**を使ってブラウザ上で直接利用できます。
+
 No python venv, no cloud warehouse credentials, no latency. Just you, your SQL, and a duck. 🦆
+
+Python仮想環境も、クラウドDWの認証情報も、レイテンシも不要。あなたとSQLと、一羽のアヒルだけ。🦆
 
 [**🚀 Try the Demo**](https://takimo.github.io/duckbt/)
 
