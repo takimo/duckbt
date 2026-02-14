@@ -2,7 +2,30 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>DuckBT IDE</title>
+
+    <!-- SEO -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="DuckBT - ブラウザで動くdbt風SQL開発環境。インストール不要、DuckDB-WASMで即座にdbtのref()やsource()を体験できます。dbt学習・SQL練習に最適。">
+    <meta name="keywords" content="DuckBT, dbt, DuckDB, SQL, dbt学習, dbt入門, dbt実行環境, analytics engineer, data build tool, ブラウザSQL">
+    <link rel="canonical" href="https://takimo.github.io/duckbt/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="DuckBT - ブラウザで動くdbt風SQL開発環境">
+    <meta property="og:description" content="インストール不要。ブラウザだけでdbtのref()やsource()構文を体験できるサーバーレスSQL IDE。dbt学習・入門に最適。">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://takimo.github.io/duckbt/">
+    <meta property="og:image" content="https://takimo.github.io/duckbt/assets/screenshot.png">
+    <meta property="og:locale" content="ja_JP">
+    <meta property="og:locale:alternate" content="en_US">
+    <meta property="og:site_name" content="DuckBT">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="DuckBT - ブラウザで動くdbt風SQL開発環境">
+    <meta name="twitter:description" content="インストール不要。ブラウザだけでdbtのref()やsource()を体験。dbt学習に最適。">
+    <meta name="twitter:image" content="https://takimo.github.io/duckbt/assets/screenshot.png">
+
+    <title>DuckBT - ブラウザで動くdbt風SQL開発環境 | dbt学習・入門</title>
     
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-00NHKF06E2"></script>
@@ -177,6 +200,28 @@
         .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 25px; }
         .checkbox-group { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-main); cursor: pointer; }
     </style>
+
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "DuckBT",
+      "url": "https://takimo.github.io/duckbt/",
+      "description": "ブラウザで動くdbt風SQL開発環境。DuckDB-WASMを使い、インストール不要でdbtのモデリング構文を体験できます。",
+      "applicationCategory": "DeveloperApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "JPY"
+      },
+      "author": {
+        "@type": "Person",
+        "name": "takimo",
+        "url": "https://github.com/takimo"
+      }
+    }
+    </script>
 </head>
 <body>
     
